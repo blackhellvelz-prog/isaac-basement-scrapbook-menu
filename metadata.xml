@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<metadata>
+	<name>Basement Scrapbook Menu</name>
+	<directory>basementscrapbook</directory>
+	<description>[h1]Basement Scrapbook Menu[/h1]
+The whole main menu of The Binding of Isaac: Repentance+ redrawn as a hand-made scrapbook pinned to the basement wall: torn paper, pins, tape, blood stains, pencil doodles and handwritten notes.
+
+[h2]What's inside[/h2]
+[list]
+[*][b]Title, save files, main menu[/b] — paper sheets with the game's progress drawings; the picked sheet lifts and shakes.
+[*][b]Character select[/b] — a list on the left and a big card: portrait, health, stats, starting items, notes, completion marks. Normal, tainted and tarnished (Epiphany) versions. Characters from mods (Fiend Folio, Furtherance, IPECAC, Lost and Forgotten…) get their own tabs automatically.
+[*][b]Every other screen[/b] — challenges and modded challenges, special seeds, stats, collection as a sticker album, bestiary, endings, secrets (achievements with how to unlock them), options, controls.
+[*][b]Mods screen as a blueprint[/b] — every installed mod is a tile with its Workshop picture: colour = enabled, black and white = disabled. Only mods you actually have are shown.
+[*][b]Pause screen[/b] — a reminder of the hotkeys of the mods you have installed.
+[*]Arrow keys move exactly the way each screen is drawn (grids by rows and columns, lists up and down).
+[*]English or Russian — follows the game language.
+[/list]
+
+[h2]Requirements[/h2]
+[list]
+[*][url=https://steamcommunity.com/sharedfiles/filedetails/?id=3127536138]REPENTOGON[/url]
+[/list]
+Works with any set of mods: whatever belongs to a mod you don't have is simply not shown.
+
+[h2]Compatibility[/h2]
+Other mods that replace the main menu graphics may look odd together with this one. Gameplay is not touched.
+
+[h2]Links[/h2]
+Source code: [url=https://github.com/blackhellvelz-prog/isaac-basement-scrapbook-menu]GitHub[/url]
+More from the same set: Dead Sea Scrolls: Unrolled, Talents for Everyone, Peat, Isaac-Style, Mod Fixes &amp; Speedups, Russian Translation for Mods.
+
+Pictures of popular mods are used in the Mods menu and the DSS window — thanks to their creators and the Isaac modding community!
+
+Made with Universal Modder. Menu art generated with Meshy AI. Author: blackhellvelz.</description>
+	<version>1.0</version>
+	<visibility>Public</visibility>
+	<tag id="Lua"/>
+	<tag id="Graphics"/>
+	<tag id="Tweaks"/>
+</metadata>
