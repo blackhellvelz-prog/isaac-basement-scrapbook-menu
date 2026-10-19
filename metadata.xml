@@ -2,6 +2,7 @@
 <metadata>
 	<name>Basement Scrapbook Menu</name>
 	<directory>basementscrapbook</directory>
+	<id>3822878865</id>
 	<description>[h1]Basement Scrapbook Menu[/h1]
 The whole main menu of The Binding of Isaac: Repentance+ redrawn as a hand-made scrapbook pinned to the basement wall: torn paper, pins, tape, blood stains, pencil doodles and handwritten notes.
 
@@ -32,7 +33,7 @@ More from the same set: Dead Sea Scrolls: Unrolled, Talents for Everyone, Peat, 
 Pictures of popular mods are used in the Mods menu and the DSS window — thanks to their creators and the Isaac modding community!
 
 Made with Universal Modder. Menu art generated with Meshy AI. Author: blackhellvelz.</description>
-	<version>1.0</version>
+	<version>1.1</version>
 	<visibility>Public</visibility>
 	<tag id="Lua"/>
 	<tag id="Graphics"/>
