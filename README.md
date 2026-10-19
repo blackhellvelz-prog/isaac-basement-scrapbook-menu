@@ -22,6 +22,7 @@ The whole main menu of The Binding of Isaac: Repentance+ redrawn as a hand-made 
 Works with any set of mods: whatever belongs to a mod you don't have is simply not shown.
 
 ### Compatibility
+**The menu is made for a 16:9 screen** (fullscreen 1920×1080, 2560×1440 and the like). In windowed mode or with other aspect ratios (4:3, 21:9, a stretched window) it may have problems: the menu stays a 16:9 picture in the middle, with a wall around it, and some things may sit off.
 Other mods that replace the main menu graphics may look odd together with this one. Gameplay is not touched.
 
 ### Links
@@ -58,6 +59,7 @@ This repository is the mod folder itself: `main.lua` is the entry point, the oth
 Работает с любым набором модов: то, что относится к моду, которого у вас нет, просто не показывается.
 
 ### Совместимость
+**Меню сделано под экран 16:9** (полный экран 1920×1080, 2560×1440 и т. п.). В оконном режиме и при других пропорциях (4:3, 21:9, растянутое окно) возможны проблемы: меню остаётся картинкой 16:9 по центру, вокруг — стена, что-то может стоять не на месте.
 Другие моды, меняющие графику главного меню, могут смотреться с этим странно. Игровой процесс не меняется.
 
 ### Ссылки

@@ -27,7 +27,12 @@ local T = 0
 local function sway(seed, amp) return math.sin(T * 0.021 + seed * 1.7) * (amp or 0.5) end
 local contT, continueKey, hasContinue = 0, nil, nil
 local function origin(m) return Isaac.WorldToMenuPosition(m, Vector(0, 0)) - Vector(39, 15) end
-local function onScreen(o) return o.X > -480 and o.X < 480 and o.Y > -270 and o.Y < 270 end
+-- экран рисуется, только если заходит в сцену (C.stage: в окне не 16:9 сцена в центре, по бокам — рамка, а не соседи)
+local function stage() return CS.stage and CS.stage() or Vector(0, 0) end
+local function onScreen(o)
+	local s = stage()
+	return o.X > s.X - 480 and o.X < s.X + 480 and o.Y > s.Y - 270 and o.Y < s.Y + 270
+end
 -- рисунок от руки «дрожит» линиями: кадр меняется рывком раз в ~8 кадров (menu_pack: имя:b1, имя:b2), у каждого — свой сдвиг
 local function boil(name, seed, rate)
 	local k = (T // (rate or 8) + (seed or 0)) % 3
@@ -545,7 +550,9 @@ local function fadeOverlay()
 		fadeT = fadeT + (LOCALFIXES.MenuDT or 1)
 		local k = fadeT / FADE
 		local a = 0.4 * (1 - k) ^ 1.5      -- мягко: резкое затемнение на 75% в первом кадре читалось как рывок
-		art("bg_cursed", 240, 135, 494, 284, Color(0, 0, 0, a), 0, nil, nil, true)
+		local w, h = Isaac.GetScreenWidth(), Isaac.GetScreenHeight()   -- на весь экран игры (и в окне не 16:9)
+		local kk = math.max(w / 494, h / 284) * 1.02
+		art("bg_cursed", w / 2, h / 2, 494 * kk, 284 * kk, Color(0, 0, 0, a), 0, nil, nil, true)
 	end
 end
 
@@ -559,6 +566,45 @@ local function killFFSplash()
 		ffSplashOff = true
 	end
 end
+-- Вокруг сцены: окно не 16:9 (оконный режим, 4:3, 21:9) — игра показывает больше мира меню, чем экран 480×270, и по
+-- бокам (или сверху и снизу) были видны соседние экраны и куски родного меню (20.10, отзыв в Мастерской: «is
+-- completely broken in windowed mode»). Раньше всех наших экранов фон текущего экрана продолжается за край сцены своими
+-- зеркальными копиями: на стыке картинка совпадает сама с собой, резкого обрыва нет (20.10, пользователь: «Плюс надо бы
+-- убрать эти резкие обрывы картинки при оконном режиме»). Сцена рисуется поверх. Только на экранах, которые рисуем
+-- мы; родные экраны игры — как у игры.
+local function ours(m) return DRAWS[m] ~= nil or S.extra[m] ~= nil or m == MainMenuType.CHARACTER end
+local BGOF = { [MainMenuType.TITLE] = "bg_title", [MainMenuType.SAVES] = "bg_saves", [MainMenuType.GAME] = "bg_game",
+	[MainMenuType.MODS] = "bg_blueprint" }
+local function bgOf(m)
+	local name = BGOF[m]
+	if m == MainMenuType.CHARACTER then
+		local md = CS.curMode and CS.curMode() or "normal"
+		name = md == "tarnished" and "bg_cursed" or (md == "tainted" and "bg_tainted" or "bg_wall")
+	end
+	name = name or "bg_game"
+	return ART[name] and name or "bg_wall"
+end
+mod:AddPriorityCallback(ModCallbacks.MC_MAIN_MENU_RENDER, CallbackPriority.IMPORTANT, function()
+	if not S.enabled or not (MenuManager.IsActive and MenuManager.IsActive()) then return end
+	local w, h = Isaac.GetScreenWidth(), Isaac.GetScreenHeight()
+	if w <= 482 and h <= 272 then return end
+	local m = MenuManager.GetActiveMenu()
+	if not ours(m) then return end
+	local name = bgOf(m)
+	local s = stage()
+	local cx, cy = s.X + 240, s.Y + 135
+	local ny = h > 272 and 1 or 0
+	for ix = -2, 2 do
+		for iy = -ny, ny do
+			if ix ~= 0 or iy ~= 0 then
+				local x, y = cx + ix * 494, cy + iy * 284
+				if x + 247 > 0 and x - 247 < w and y + 142 > 0 and y - 142 < h then
+					pcall(art, name, x, y, 494, 284, nil, 0, (ix % 2 == 0) and 1 or -1, (iy % 2 == 0) and 1 or -1, true)
+				end
+			end
+		end
+	end
+end)
 mod:AddCallback(ModCallbacks.MC_MAIN_MENU_RENDER, function()
 	if not S.enabled or not (MenuManager.IsActive and MenuManager.IsActive()) then return end
 	killFFSplash()
@@ -570,7 +616,7 @@ mod:AddCallback(ModCallbacks.MC_MAIN_MENU_RENDER, function()
 		local cur = updateTravel()
 		local dbg = (LOCALFIXES.MenuDebug or 0) > 0 and {}           -- журнал решений по кадрам (проверка переходов)
 		if travel then
-			if DRAWS[cur] then DRAWS[cur](Vector(0, 0)) end   -- новый экран сразу на месте, старое меню не видно
+			if DRAWS[cur] then DRAWS[cur](stage()) end   -- новый экран сразу на месте, старое меню не видно
 			if dbg then dbg[#dbg + 1] = "travel " .. tostring(travel) .. (DRAWS[cur] and " draw0" or " nodraw") end
 		else
 			for m in pairs(DRAWS) do
@@ -579,7 +625,7 @@ mod:AddCallback(ModCallbacks.MC_MAIN_MENU_RENDER, function()
 				-- листаешь эту менюшку испытания вниз вверх он показывает старое меню»); соседние экраны при этом не рисуются:
 				-- камера игры уезжает вниз за выбором, и сосед вылезал снизу по камере (19.10: «У тебя управление в настройках
 				-- вылезло неправильно» — «Управление» под листом «Настроек»)
-				if m == cur and S.fixed[m] then o = Vector(0, 0) end
+				if m == cur and S.fixed[m] then o = stage() end
 				if S.fixed[cur] and m ~= cur then o = Vector(99999, 99999) end
 				if onScreen(o) then
 					DRAWS[m](o)

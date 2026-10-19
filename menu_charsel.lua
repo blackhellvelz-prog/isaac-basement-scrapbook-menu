@@ -24,6 +24,14 @@ LOCALFIXES.CharSelect = C
 
 local ZERO = Vector.Zero
 local FULLMASK = 0xFFFFFFFF
+-- «Сцена» — где стоит экран меню 480×270 на экране игры. В полноэкранном 16:9 это (0, 0), а в окне другой формы
+-- игра показывает больше мира меню и ставит активный экран по центру (20.10, отзыв в Мастерской: «is completely broken
+-- in windowed mode» — в широком окне экран выбора и экраны в переходе рисовались от левого края, по бокам были видны
+-- соседние экраны и родное меню). Все наши экраны «на месте» рисуются от C.stage().
+function C.stage()
+	local w, h = Isaac.GetScreenWidth(), Isaac.GetScreenHeight()
+	return Vector(math.floor((w - 480) / 2 + 0.5), math.floor((h - 270) / 2 + 0.5))
+end
 local INK = Color(55 / 255, 43 / 255, 45 / 255, 1)
 local SOFT = Color(110 / 255, 98 / 255, 100 / 255, 1)
 local CREAM = Color(244 / 255, 236 / 255, 208 / 255, 1)
@@ -69,7 +77,7 @@ local function art(name, x, y, w, h, color, rot, kx, ky, noflip)
 		x = FLIPX + (x - FLIPX) * FLIP
 		kx = (kx or 1) * math.max(0.01, FLIP)
 		local c = color or Color.Default
-		local sh = 0.55 + 0.45 * FLIP                       -- в изгибе лист темнеет
+		local sh = 1                                      -- 20.10: без затемнения листа в изгибе
 		color = Color(c.R * sh, c.G * sh, c.B * sh, c.A)
 	end
 	s:SetFrame(anim, 0)
@@ -108,7 +116,7 @@ local function artLive(name, x, y, w, h, color, dir, fn, anchor, kx, ky, n)
 		x = FLIPX + (x - FLIPX) * FLIP
 		kx = kx * math.max(0.01, FLIP)
 		local c = color or Color.Default
-		local sh = 0.55 + 0.45 * FLIP
+		local sh = 1
 		color = Color(c.R * sh, c.G * sh, c.B * sh, c.A)
 	end
 	s:SetFrame(anim, 0)
@@ -657,16 +665,13 @@ end
 
 -- ------------------------------------------------------------------ тон меню (тьма)
 local tones = {}
+-- Тон меню у порченых и потускневших убран (20.10, пользователь: «А нам обязательно вообще это затенение? В целом у нас
+-- интерфейс и так меняется на более порванный. Зачем оно нам»): режим и так видно по фону (порванный лист, проклятый
+-- фон), а затемнение всего меню через ColorModifier делало экран тёмным, а при сбое — тёмным навсегда (отзыв в
+-- Мастерской про Ctrl). Всегда — обычный тон меню (тот, что был у игры).
 local function setTone(kind)
 	if not (MenuManager.SetColorModifier and ColorModifier) then return end
-	local t
-	if kind == "tarnished" then
-		t = ColorModifier(1.18, 0.86, 0.86, 0.42, -0.3, 1.08)
-	elseif kind == "tainted" then
-		t = ColorModifier(1, 1.0, 1.08, 0.36, -0.22, 0.92)
-	else
-		t = tones.normal
-	end
+	local t = tones.normal
 	if t then pcall(MenuManager.SetColorModifier, t, true, 0.04) end
 end
 
@@ -682,6 +687,7 @@ local function curMode()
 	if C.tarn then return "tarnished" end
 	return page() == 1 and "tainted" or "normal"
 end
+C.curMode = curMode
 
 -- ------------------------------------------------------------------ сложности
 local DIFF = {
@@ -1380,26 +1386,40 @@ local function input(onMenu, mode, sel, list, groups, tl, hasTainted)
 		C.ePress = false
 		return
 	end
-	-- E (клавиатура) и кнопка порченых геймпада — читаются до маски ввода: после SetInputMask в том же кадре
-	-- REPENTOGON отдаёт нажатия клавиш как отпущенные
-	C.ePress = edgeKey(Keyboard.KEY_E) or edge(ButtonAction.ACTION_MENUEX)
-	if onMenu and C.phase == "char" then
-		-- E: страницу «обычный ↔ порченый» переворачивает сама игра (клавиша E клавиатуры, кнопка геймпада), её не
-		-- перехватить; поверх этого — третий режим «потускневший»: E на порченом → игра перевернёт на обычный, а мы
-		-- вернём страницу порченых и включим потускневших; E на потускневших → игра перевернёт на обычный.
-		local ePress = C.ePress
-		if ePress and not C.fx then
-			if C.tarn then
-				startFx("cleanse", function() C.tarn = false setTone("normal") end)
-			elseif mode == "tainted" and tl then
-				local _, idx = tarnFor(sel and sel.pt or -1)
-				C.pendingTarn = idx or C.tIdx
-				startFx("tarnish", function() setTone("tarnished") end)
-			elseif mode == "tainted" then
-				startFx("clean", function() setTone("normal") end)
-			elseif hasTainted then
-				startFx("taint", function() setTone("tainted") end)
-			end
+	-- Страницу «обычный ↔ порченый» переворачивает сама игра (её кнопка — MENURB: E на клавиатуре, RB на геймпаде,
+	-- или как игрок переназначил), её не перехватить. Переходы и тон меню запускаются по тому, что страница ПРАВДА
+	-- перевернулась, а не по клавише (20.10, отзыв в Мастерской: «pressing ctrl on the character select makes it
+	-- spin which seems to do nothing other than play a noise and permanently darken the menu» — раньше переход
+	-- запускали E или MENUEX, а MENUEX — это Ctrl: начинался переход к потускневшим, игра страницу не переворачивала,
+	-- и тёмный тон оставался навсегда). Поверх — третий режим «потускневший»: игра перевернула порченых на обычных, а у
+	-- Epiphany есть потускневшие → мы возвращаем страницу порченых и включаем потускневших; с потускневших игра
+	-- переворачивает на обычных.
+	-- переворот засчитывается, только если страница сменилась вскоре после кнопки переворота игры (MENURB: E на
+	-- клавиатуре, RB на геймпаде): страницу меняет и сама игра (вход на экран, старт забега), это не переход
+	-- игра переворачивает страницу не сразу, а после своей анимации (20.10: с окном в 20 кадров переход не
+	-- засчитывался — «Теперь в целом не работает переключение на потускневших»): нажатие и смена страницы
+	-- сводятся в пределах секунды в любом порядке
+	local fc = Isaac.GetFrameCount()
+	if edge(ButtonAction.ACTION_MENURB) or edgeKey(Keyboard.KEY_E) then C.flipAt = fc end
+	local pg = page()
+	if C.lastPage ~= nil and pg ~= C.lastPage then C.pageAt = fc end
+	C.lastPage = pg
+	if C.flipAt and fc - C.flipAt > 60 then C.flipAt = nil end
+	if C.pageAt and fc - C.pageAt > 60 then C.pageAt = nil end
+	local flipped = C.flipAt ~= nil and C.pageAt ~= nil
+	if flipped then C.flipAt, C.pageAt = nil, nil end
+	C.ePress = flipped
+	if onMenu and C.phase == "char" and flipped and not C.fx then
+		if C.tarn then
+			startFx("cleanse", function() C.tarn = false setTone("normal") end)
+		elseif pg == 0 and tl then
+			local _, idx = tarnFor(sel and sel.pt or -1)
+			C.pendingTarn = idx or C.tIdx
+			startFx("tarnish", function() setTone("tarnished") end)
+		elseif pg == 0 then
+			startFx("clean", function() setTone("normal") end)
+		elseif hasTainted then
+			startFx("taint", function() setTone("tainted") end)
 		end
 	end
 	if not (onMenu and CharacterMenu.GetActiveStatus() == 0) then
@@ -1448,6 +1468,7 @@ local function input(onMenu, mode, sel, list, groups, tl, hasTainted)
 	-- игра перевернула порченых на обычных — вернуть страницу порченых и включить потускневших
 	if C.pendingTarn and CharacterMenu.GetActiveStatus() == 0 and page() == 0 then
 		pcall(CharacterMenu.SetSelectedCharacterMenu, 1, true)
+		C.lastPage, C.pageAt = 1, nil          -- свой переворот — не переход
 		C.tarn, C.tIdx, C.pendingTarn = true, C.pendingTarn, nil
 	end
 	local function step(dir)
@@ -1500,7 +1521,7 @@ local function render()
 	-- не рисуется (18.10: «Там дергается между переходами меню / Примерно на 1 кадр и пропадает»; «Между главный меню и
 	-- новым забегом этот баг видно явнее» — запись 60 кадров/с: в первом кадре перехода экран рисовался по камере, внизу,
 	-- а сверху на 2 кадра проглядывало родное главное меню: этот колбэк идёт раньше, чем menu_screens ставит MenuFixed)
-	local o = Vector(0, 0)
+	local o = C.stage()
 	if MenuManager.GetActiveMenu() ~= MainMenuType.CHARACTER then
 		C.active = false
 		MenuManager.SetInputMask(FULLMASK)
@@ -1530,6 +1551,7 @@ local function render()
 		end
 		C.phase = C.backToChar and "char" or "diff"
 		C.backToChar = nil
+		C.lastPage, C.pageAt, C.flipAt = nil, nil, nil   -- страница, с которой пришли, — не переворот
 		C.diffSel = CharacterMenu.GetDifficulty()
 		C.slideT = 30
 	end
@@ -1552,6 +1574,7 @@ local function render()
 	if onMenu and page() == 1 and not C.tarn and not C.pendingTarn and sel and not sel.random
 		and CharacterMenu.GetActiveStatus() == 0 and not taintedOf(sel.pt) then
 		pcall(CharacterMenu.SetSelectedCharacterMenu, 0, true)
+		C.lastPage, C.pageAt = 0, nil
 		C.fx = nil
 		mode = curMode()
 	end
@@ -1624,11 +1647,6 @@ local function render()
 		{ "Tab", "Сид" }, { "Q", "Пасхалки" } }
 	if C.canSwap == false then table.remove(hl, 2) end
 	hints(o, hl)
-	-- тьма перехода
-	if C.fx then
-		local a = (C.fx.kind == "tarnish" and 0.3 or 0.18) * (1 - FLIP)
-		art("bg_cursed", o.X + 240, o.Y + 135, 494, 284, Color(0.1, 0, 0, a), 0, nil, nil, true)
-	end
 end
 
 -- шаг времени меню (18.10): меню рисуется в каждом кадре, и при 144 кадрах промежуточные кадры между кадрами логики

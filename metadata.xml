@@ -24,6 +24,7 @@ The whole main menu of The Binding of Isaac: Repentance+ redrawn as a hand-made 
 Works with any set of mods: whatever belongs to a mod you don't have is simply not shown.
 
 [h2]Compatibility[/h2]
+[b]The menu is made for a 16:9 screen[/b] (fullscreen 1920×1080, 2560×1440 and the like). In windowed mode or with other aspect ratios (4:3, 21:9, a stretched window) it may have problems: the menu stays a 16:9 picture in the middle, with a wall around it, and some things may sit off.
 Other mods that replace the main menu graphics may look odd together with this one. Gameplay is not touched.
 
 [h2]Links[/h2]
@@ -33,7 +34,7 @@ More from the same set: Dead Sea Scrolls: Unrolled, Talents for Everyone, Peat, 
 Pictures of popular mods are used in the Mods menu and the DSS window — thanks to their creators and the Isaac modding community!
 
 Made with Universal Modder. Menu art generated with Meshy AI. Author: blackhellvelz.</description>
-	<version>1.1</version>
+	<version>1.2</version>
 	<visibility>Public</visibility>
 	<tag id="Lua"/>
 	<tag id="Graphics"/>
